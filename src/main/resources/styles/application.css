@@ -1,0 +1,217 @@
+.root {
+    -fx-font-family: 'Segoe UI', Arial, sans-serif;
+}
+
+
+.game-button {
+    -fx-background-color: linear-gradient(#4CAF50, #388E3C);
+    -fx-background-radius: 30;
+    -fx-background-insets: 0;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-padding: 15 30 15 30;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.6), 5, 0.0, 0, 2);
+    -fx-font-size: 16px;
+    -fx-transition: all 0.3s ease;
+}
+
+.game-button:hover {
+    -fx-background-color: linear-gradient(#5BBF60, #429a47);
+    -fx-cursor: hand;
+}
+
+.game-button:pressed {
+    -fx-background-color: linear-gradient(#388E3C, #2E7D32);
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.4), 3, 0.0, 0, 1);
+}
+
+
+.maze-grid {
+    -fx-background-color: rgba(194, 224, 177, 0.85);
+    -fx-background-radius: 15;
+    -fx-padding: 15;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.5), 15, 0.0, 0, 7);
+    -fx-border-color: linear-gradient(to bottom right, #2c3e50, #3498db);
+    -fx-border-width: 4;
+    -fx-border-radius: 15;
+}
+
+
+.cell {
+    -fx-border-color: rgba(44, 62, 80, 0.4);
+    -fx-border-width: 1.5;
+    -fx-background-radius: 5;
+    -fx-border-radius: 5;
+    -fx-transition: all 0.2s ease;
+}
+
+.cell:hover {
+    -fx-effect: innershadow(gaussian, #4CAF50, 5, 0.5, 0, 0);
+    -fx-cursor: hand;
+}
+
+
+.tools-panel {
+    -fx-background-color: rgba(44, 62, 80, 0.8);
+    -fx-background-radius: 10 0 0 10;
+    -fx-padding: 15;
+    -fx-spacing: 10;
+}
+
+
+.element-button {
+    -fx-background-color: rgba(255, 255, 255, 0.2);
+    -fx-background-radius: 5;
+    -fx-padding: 5;
+}
+
+.element-button:hover {
+    -fx-background-color: rgba(255, 255, 255, 0.3);
+    -fx-effect: dropshadow(three-pass-box, rgba(255,255,255,0.4), 5, 0.0, 0, 0);
+    -fx-cursor: hand;
+}
+
+.element-button:selected {
+    -fx-background-color: rgba(76, 175, 80, 0.5);
+    -fx-effect: innershadow(gaussian, rgba(0,0,0,0.4), 5, 0.0, 0, 0);
+}
+
+
+.game-title {
+    -fx-font-size: 30px;
+    -fx-font-weight: bold;
+    -fx-text-fill: white;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.8), 5, 0.0, 0, 2);
+}
+
+
+.welcome-screen {
+    -fx-background-image: url('/images/fond_menu.png');
+    -fx-background-size: cover;
+}
+
+
+.game-screen {
+    -fx-background-image: url('/images/fond_jeu.png');
+    -fx-background-size: cover;
+}
+
+
+.stats-panel {
+    -fx-background-color: rgba(0, 0, 0, 0.85);
+    -fx-background-radius: 15;
+    -fx-padding: 20;
+    -fx-border-color: linear-gradient(to bottom right, #FFD700, #FFA500);
+    -fx-border-width: 3;
+    -fx-border-radius: 15;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.6), 10, 0.0, 0, 5);
+}
+
+.stats-title {
+    -fx-font-size: 24px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #FFD700;
+}
+
+.stats-value {
+    -fx-font-size: 18px;
+    -fx-text-fill: white;
+}
+
+
+@keyframes enhancedPulse {
+    0% { 
+        -fx-scale-x: 1; 
+        -fx-scale-y: 1; 
+        -fx-opacity: 0.7;
+        -fx-background-color: rgba(76, 175, 80, 0.3);
+    }
+    50% { 
+        -fx-scale-x: 1.08; 
+        -fx-scale-y: 1.08; 
+        -fx-opacity: 0.9;
+        -fx-background-color: rgba(76, 175, 80, 0.5);
+    }
+    100% { 
+        -fx-scale-x: 1; 
+        -fx-scale-y: 1; 
+        -fx-opacity: 0.7;
+        -fx-background-color: rgba(76, 175, 80, 0.3);
+    }
+}
+
+.accessible-cell {
+    -fx-animation: enhancedPulse 2s infinite;
+}
+
+
+.game-over-dialog {
+    -fx-background-color: rgba(0, 0, 0, 0.8);
+    -fx-background-radius: 15;
+    -fx-border-color: #FFD700;
+    -fx-border-width: 3;
+    -fx-border-radius: 15;
+    -fx-padding: 20;
+}
+
+
+.player-cell {
+    -fx-background-color: rgba(52, 152, 219, 0.7);
+    -fx-effect: dropshadow(gaussian, rgba(52, 152, 219, 0.5), 10, 0.0, 0, 0);
+}
+
+.goal-cell {
+    -fx-background-color: rgba(46, 204, 113, 0.7);
+    -fx-effect: dropshadow(gaussian, rgba(46, 204, 113, 0.5), 10, 0.0, 0, 0);
+}
+
+.obstacle-cell {
+    -fx-background-color: rgba(231, 76, 60, 0.7);
+    -fx-effect: dropshadow(gaussian, rgba(231, 76, 60, 0.5), 10, 0.0, 0, 0);
+}
+
+
+.interactive-element {
+    -fx-transition: all 0.3s ease;
+}
+
+.interactive-element:hover {
+    -fx-scale-x: 1.05;
+    -fx-scale-y: 1.05;
+    -fx-effect: dropshadow(gaussian, rgba(255,255,255,0.4), 10, 0.0, 0, 0);
+}
+
+
+.notification {
+    -fx-background-color: rgba(52, 73, 94, 0.9);
+    -fx-background-radius: 10;
+    -fx-padding: 10 20 10 20;
+    -fx-text-fill: white;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 8, 0.0, 0, 3);
+}
+
+
+.pause-menu {
+    -fx-background-color: rgba(0, 0, 0, 0.9);
+    -fx-background-radius: 20;
+    -fx-padding: 25;
+    -fx-border-color: linear-gradient(to bottom right, #3498db, #2ecc71);
+    -fx-border-width: 4;
+    -fx-border-radius: 20;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.7), 15, 0.0, 0, 8);
+}
+
+
+.progress-bar {
+    -fx-accent: #2ecc71;
+}
+
+.progress-bar .track {
+    -fx-background-color: rgba(189, 195, 199, 0.4);
+    -fx-background-radius: 5;
+}
+
+.progress-bar .bar {
+    -fx-background-radius: 5;
+    -fx-effect: dropshadow(gaussian, rgba(46, 204, 113, 0.4), 5, 0.0, 0, 2);
+}

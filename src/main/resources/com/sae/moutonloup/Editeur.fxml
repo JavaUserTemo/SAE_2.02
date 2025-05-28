@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.image.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.*?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.effect.DropShadow?>
+<?import javafx.scene.layout.StackPane?> <!-- ⬅️ NÉCESSAIRE -->
+
+<BorderPane xmlns="http://javafx.com/javafx"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="com.sae.moutonloup.view.EditeurController">
+
+
+<top>
+        <HBox alignment="CENTER" spacing="20" style="-fx-padding: 10;">
+            <Text text="Éditeur de Labyrinthe" styleClass="game-title"/>
+        </HBox>
+    </top>
+
+    <center>
+        <StackPane>
+            <GridPane fx:id="grillePane" hgap="2" vgap="2"
+                      styleClass="maze-grid"
+                      alignment="CENTER"/>
+        </StackPane>
+    </center>
+
+    <right>
+        <VBox spacing="10.0" alignment="CENTER" styleClass="tools-panel">
+            <padding>
+                <Insets top="10" bottom="10" left="10" right="10"/>
+            </padding>
+
+            <Text text="Éléments" fill="BLACK" style="-fx-font-weight: bold;"/>
+
+            <Button onAction="#boutonLoup" styleClass="element-button">
+                <graphic>
+                    <ImageView fitWidth="40" fitHeight="40">
+                        <image>
+                            <Image url="@../../../images/loup.png"/>
+                        </image>
+                    </ImageView>
+                </graphic>
+            </Button>
+
+            <Button onAction="#boutonMouton" styleClass="element-button">
+                <graphic>
+                    <ImageView fitWidth="40" fitHeight="40">
+                        <image>
+                            <Image url="@../../../images/mouton.png"/>
+                        </image>
+                    </ImageView>
+                </graphic>
+            </Button>
+
+            <Button onAction="#boutonCactus" styleClass="element-button">
+                <graphic>
+                    <ImageView fitWidth="40" fitHeight="40">
+                        <image>
+                            <Image url="@../../../images/cactus.png"/>
+                        </image>
+                    </ImageView>
+                </graphic>
+            </Button>
+
+            <Button onAction="#boutonMarguerite" styleClass="element-button">
+                <graphic>
+                    <ImageView fitWidth="40" fitHeight="40">
+                        <image>
+                            <Image url="@../../../images/marguerite.png"/>
+                        </image>
+                    </ImageView>
+                </graphic>
+            </Button>
+
+            <Button onAction="#boutonRocher" styleClass="element-button">
+                <graphic>
+                    <ImageView fitWidth="40" fitHeight="40">
+                        <image>
+                            <Image url="@../../../images/rocher.png"/>
+                        </image>
+                    </ImageView>
+                </graphic>
+            </Button>
+
+            <Button onAction="#boutonSortie" styleClass="element-button">
+                <graphic>
+                    <ImageView fitWidth="40" fitHeight="40">
+                        <image>
+                            <Image url="@../../../images/sortie.png"/>
+                        </image>
+                    </ImageView>
+                </graphic>
+            </Button>
+
+            <Text text="Actions" fill="BLACK" style="-fx-font-weight: bold;"/>
+
+            <Button onAction="#boutonSupprimer" text="❌ Supprimer" styleClass="game-button"/>
+            <Button onAction="#demarrerPartie" text="▶ Démarrer" styleClass="game-button"/>
+            <Button onAction="#importerGrille" text="📂 Importer" styleClass="game-button"/>
+            <Button onAction="#exporterGrille" text="💾 Exporter" styleClass="game-button"/>
+            <Button onAction="#rejouer" text="🔁 Rejouer" styleClass="game-button"/>
+
+        </VBox>
+    </right>
+
+</BorderPane>

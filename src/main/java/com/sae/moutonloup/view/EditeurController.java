@@ -27,6 +27,10 @@ public class EditeurController {
     private int largeur = 10;
     private int hauteur = 10;
 
+    private Sortie sortie;
+
+    private boolean auto = true;
+
 
 
     @FXML
@@ -56,7 +60,7 @@ public class EditeurController {
                                 loup = new Loup(new Position(x, y));
                                 grille[x][y] = loup;
                             }
-                            case 's' -> grille[x][y] = new Sortie();
+                            case 's' -> grille[x][y] = new Sortie(x,y);
                             default -> grille[x][y] = new Herbe();
                         }
                     }
@@ -102,7 +106,7 @@ public class EditeurController {
 
     @FXML
     private void rejouer() {
-        grille = new Element[largeur][hauteur];
+        grille = new Element[lafrgeur][hauteur];
         mouton = null;
         loup = null;
         nbTours = nbHerbe = nbCactus = nbMarguerite = 0;
@@ -143,6 +147,7 @@ public class EditeurController {
             }
         }
     }
+
 
     private void afficherGrille() {
         grillePane.getChildren().clear();
@@ -193,7 +198,7 @@ public class EditeurController {
 
             case SORTIE -> {
                 if (bordure && grille[x][y] instanceof Rocher) {
-                    grille[x][y] = new Sortie();
+                    grille[x][y] = new Sortie(x,y);
                 }
             }
             case SUPPRIMER -> {
@@ -329,7 +334,6 @@ public class EditeurController {
 
 
 
-
     private void afficherCasesAccessibles(Position pos, int portee, boolean estMouton) {
         grillePane.getChildren().clear();
 
@@ -348,17 +352,18 @@ public class EditeurController {
                     String couleur = estMouton ? "deepskyblue" : "red";
                     imageView.setStyle("-fx-effect: dropshadow(gaussian, " + couleur + ", 15, 0.5, 0, 0);");
 
-                    imageView.setOnMouseClicked(e -> {
-                        boolean deplacementOk = estMouton
-                                ? deplacerMouton(finalX, finalY)
-                                : deplacerLoup(finalX, finalY);
+                    if(auto = true) {
+                        imageView.setOnMouseClicked(e -> {
+                            boolean deplacementOk = estMouton
+                                    ? deplacerMouton(finalX, finalY)
+                                    : deplacerLoup(finalX, finalY);
 
-                        if (deplacementOk) {
-                            estTourDuMouton = !estMouton;
-                            jouerTour();
-                        }
-                    });
-
+                            if (deplacementOk) {
+                                estTourDuMouton = !estMouton;
+                                jouerTour();
+                            }
+                        });
+                    }
                 } else {
                     imageView.setOnMouseClicked(e -> placerElement(finalX, finalY));
                 }
@@ -366,6 +371,18 @@ public class EditeurController {
                 grillePane.add(imageView, x, y);
             }
         }
+    }
+
+    private void jouerAuto(){
+        if(mouton == null && loup == null && sortie == null){
+            return ;
+        }
+
+        if(mouton.getX() == loup.getX() && mouton.getY() == loup.getY() || mouton.getX() == sortie.getX() && mouton.getY() == sortie.getY()){
+            return;
+        }
+
+
     }
 
 

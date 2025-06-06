@@ -1,5 +1,7 @@
 package com.sae.moutonloup.model;
 
+import java.util.Objects;
+
 public class Position {
     private int x, y;
 
@@ -24,5 +26,15 @@ public class Position {
             return this.x == p.x && this.y == p.y;
         }
         return false;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(x, y);
+    }
+
+    @Override
+    public String toString() {
+        return "(" + x + "," + y + ")";
     }
 }

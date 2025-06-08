@@ -1,186 +1,255 @@
 package com.sae.moutonloup.ia;
 
 import com.sae.moutonloup.model.*;
-
 import java.util.*;
 
 public class AlgorithmeParcours {
 
-    /**
-     * Algorithme de Dijkstra pour trouver le chemin le plus court
-     * Utilisé pour le loup qui chasse le mouton
-     */
-    public static List<Position> dijkstra(Position depart, Position objectif, Element[][] grille) {
-        int largeur = grille.length;
-        int hauteur = grille[0].length;
 
-        if (!estPositionValide(depart, largeur, hauteur) ||
-                !estPositionValide(objectif, largeur, hauteur)) {
+    public static List<Position> aStar(Position depart, Position objectif, Element[][] grille,
+                                       Mouton mouton, Loup loup) {
+        if (depart == null || objectif == null || grille == null) {
             return new ArrayList<>();
         }
 
-        Map<Position, Position> precedent = new HashMap<>();
-        Map<Position, Integer> distance = new HashMap<>();
-        PriorityQueue<Position> file = new PriorityQueue<>(Comparator.comparingInt(distance::get));
-
-        // Initialisation des distances
-        for (int x = 0; x < largeur; x++) {
-            for (int y = 0; y < hauteur; y++) {
-                Position p = new Position(x, y);
-                distance.put(p, Integer.MAX_VALUE);
-            }
-        }
-
-        distance.put(depart, 0);
-        file.add(depart);
-
-        while (!file.isEmpty()) {
-            Position courant = file.poll();
-
-            if (courant.equals(objectif)) {
-                break;
-            }
-
-            int distanceCourante = distance.get(courant);
-            if (distanceCourante == Integer.MAX_VALUE) {
-                break;
-            }
-
-            for (Position voisin : getVoisinsAccessibles(courant, grille, true)) {
-                int nouvelleDist = distanceCourante + 1;
-
-                if (nouvelleDist < distance.get(voisin)) {
-                    distance.put(voisin, nouvelleDist);
-                    precedent.put(voisin, courant);
-                    file.remove(voisin);
-                    file.add(voisin);
-                }
-            }
-        }
-
-        return construireChemin(precedent, depart, objectif);
-    }
-
-    /**
-     * Algorithme A* pour trouver le chemin optimal avec heuristique
-     * Utilisé pour le mouton qui fuit vers la sortie
-     */
-    public static List<Position> aStar(Position depart, Position objectif, Element[][] grille) {
         int largeur = grille.length;
         int hauteur = grille[0].length;
-
-        if (!estPositionValide(depart, largeur, hauteur) ||
-                !estPositionValide(objectif, largeur, hauteur)) {
-            return new ArrayList<>();
-        }
 
         Map<Position, Integer> gScore = new HashMap<>();
         Map<Position, Integer> fScore = new HashMap<>();
         Map<Position, Position> precedent = new HashMap<>();
 
-        Set<Position> openSet = new HashSet<>();
+        PriorityQueue<Position> openSet = new PriorityQueue<>(
+                Comparator.comparingInt(pos -> fScore.getOrDefault(pos, Integer.MAX_VALUE))
+        );
         Set<Position> closedSet = new HashSet<>();
 
         gScore.put(depart, 0);
         fScore.put(depart, depart.distanceManhattan(objectif));
-
-        PriorityQueue<Position> file = new PriorityQueue<>(Comparator.comparingInt(fScore::get));
-        file.add(depart);
         openSet.add(depart);
 
-        while (!file.isEmpty()) {
-            Position courant = file.poll();
-            openSet.remove(courant);
-            closedSet.add(courant);
+        while (!openSet.isEmpty()) {
+            Position courant = openSet.poll();
 
             if (courant.equals(objectif)) {
-                break;
+                return construireChemin(precedent, depart, objectif);
             }
 
-            for (Position voisin : getVoisinsAccessibles(courant, grille, false)) {
+            closedSet.add(courant);
+
+            for (Position voisin : getVoisinsValides(courant, grille, largeur, hauteur, mouton, loup)) {
                 if (closedSet.contains(voisin)) {
                     continue;
                 }
 
                 int tentativeG = gScore.get(courant) + 1;
 
-                if (!openSet.contains(voisin)) {
-                    openSet.add(voisin);
-                } else if (tentativeG >= gScore.getOrDefault(voisin, Integer.MAX_VALUE)) {
-                    continue;
+                if (!gScore.containsKey(voisin) || tentativeG < gScore.get(voisin)) {
+                    precedent.put(voisin, courant);
+                    gScore.put(voisin, tentativeG);
+                    fScore.put(voisin, tentativeG + voisin.distanceManhattan(objectif));
+
+                    if (!openSet.contains(voisin)) {
+                        openSet.add(voisin);
+                    }
                 }
-
-                precedent.put(voisin, courant);
-                gScore.put(voisin, tentativeG);
-                fScore.put(voisin, tentativeG + voisin.distanceManhattan(objectif));
-
-                file.remove(voisin);
-                file.add(voisin);
             }
         }
 
-        return construireChemin(precedent, depart, objectif);
+        return new ArrayList<>();
     }
 
-    /**
-     * Obtient les voisins accessibles d'une position
-     */
-    private static List<Position> getVoisinsAccessibles(Position pos, Element[][] grille, boolean estLoup) {
-        List<Position> voisins = new ArrayList<>();
-        int x = pos.getX(), y = pos.getY();
+
+    public static List<Position> dijkstra(Position depart, Position objectif, Element[][] grille,
+                                          Mouton mouton, Loup loup) {
+        if (depart == null || objectif == null || grille == null) {
+            return new ArrayList<>();
+        }
+
         int largeur = grille.length;
         int hauteur = grille[0].length;
 
-        // Directions possibles : droite, gauche, bas, haut
-        int[][] directions = {{1,0}, {-1,0}, {0,1}, {0,-1}};
+        Map<Position, Integer> distances = new HashMap<>();
+        Map<Position, Position> precedents = new HashMap<>();
+        PriorityQueue<Position> file = new PriorityQueue<>(
+                Comparator.comparingInt(pos -> distances.getOrDefault(pos, Integer.MAX_VALUE))
+        );
+
+        distances.put(depart, 0);
+        file.add(depart);
+
+        while (!file.isEmpty()) {
+            Position courant = file.poll();
+
+            if (courant.equals(objectif)) {
+                return construireChemin(precedents, depart, objectif);
+            }
+
+            int distanceCourante = distances.get(courant);
+
+            for (Position voisin : getVoisinsValides(courant, grille, largeur, hauteur, mouton, loup)) {
+                int nouvelleDist = distanceCourante + 1;
+
+                if (nouvelleDist < distances.getOrDefault(voisin, Integer.MAX_VALUE)) {
+                    distances.put(voisin, nouvelleDist);
+                    precedents.put(voisin, courant);
+                    file.remove(voisin);
+                    file.add(voisin);
+                }
+            }
+        }
+
+        return new ArrayList<>();
+    }
+
+
+    private static List<Position> getVoisinsValides(Position pos, Element[][] grille,
+                                                    int largeur, int hauteur, Mouton mouton, Loup loup) {
+        List<Position> voisins = new ArrayList<>();
+        int[][] directions = {{0, 1}, {0, -1}, {1, 0}, {-1, 0}};
 
         for (int[] dir : directions) {
-            int nx = x + dir[0];
-            int ny = y + dir[1];
+            int newX = pos.getX() + dir[0];
+            int newY = pos.getY() + dir[1];
 
-            if (nx >= 0 && ny >= 0 && nx < largeur && ny < hauteur) {
-                Element element = grille[nx][ny];
+            if (newX >= 0 && newX < largeur && newY >= 0 && newY < hauteur) {
+                Element element = grille[newX][newY];
 
-                if (!(element instanceof Rocher)) {
-                    // Le loup ne peut pas aller sur la sortie
-                    if (estLoup && element instanceof Sortie) {
-                        continue;
-                    }
-                    voisins.add(new Position(nx, ny));
+                // Ne pas passer sur les rochers
+                if (element instanceof Rocher) {
+                    continue;
                 }
+
+                // Le loup ne peut pas aller sur la sortie (sauf si le mouton y est)
+                if (element instanceof Sortie) {
+                    if (mouton != null && mouton.getX() == newX && mouton.getY() == newY) {
+                        // Le loup peut attraper le mouton sur la sortie
+                        voisins.add(new Position(newX, newY));
+                    }
+                    // Sinon, le loup ne peut pas aller sur la sortie
+                    continue;
+                }
+
+                voisins.add(new Position(newX, newY));
             }
         }
 
         return voisins;
     }
 
-    /**
-     * Reconstruit le chemin à partir des précédents
-     */
+
     private static List<Position> construireChemin(Map<Position, Position> precedent,
                                                    Position depart, Position objectif) {
-        LinkedList<Position> chemin = new LinkedList<>();
+        List<Position> chemin = new ArrayList<>();
         Position courant = objectif;
 
-        if (!precedent.containsKey(objectif) && !depart.equals(objectif)) {
-            return chemin;
-        }
-
-        // Reconstruction du chemin en remontant depuis l'objectif
         while (precedent.containsKey(courant)) {
-            chemin.addFirst(courant);
+            chemin.add(0, courant);
             courant = precedent.get(courant);
         }
 
         return chemin;
     }
 
-    /**
-     * Vérifie si une position est valide dans la grille
-     */
-    private static boolean estPositionValide(Position pos, int largeur, int hauteur) {
-        return pos != null &&
-                pos.getX() >= 0 && pos.getX() < largeur &&
-                pos.getY() >= 0 && pos.getY() < hauteur;
+
+    public static Position trouverMeilleurePosition(Animal animal, Position objectif,
+                                                    Element[][] grille, Mouton mouton, Loup loup) {
+        Position posActuelle = animal.getPosition();
+        int vitesse = animal.getVitesse();
+        Position meilleurePos = null;
+        int meilleureDistance = Integer.MAX_VALUE;
+
+        // Parcourir toutes les positions à la distance exacte de la vitesse
+        for (int dx = -vitesse; dx <= vitesse; dx++) {
+            for (int dy = -vitesse; dy <= vitesse; dy++) {
+                // Distance de Manhattan exacte
+                if (Math.abs(dx) + Math.abs(dy) == vitesse) {
+                    int newX = posActuelle.getX() + dx;
+                    int newY = posActuelle.getY() + dy;
+
+                    if (estDeplacementValide(posActuelle, new Position(newX, newY),
+                            grille, animal, mouton, loup)) {
+                        Position candidat = new Position(newX, newY);
+                        int distanceVersObjectif = candidat.distanceManhattan(objectif);
+
+                        if (distanceVersObjectif < meilleureDistance) {
+                            meilleureDistance = distanceVersObjectif;
+                            meilleurePos = candidat;
+                        }
+                    }
+                }
+            }
+        }
+
+        return meilleurePos;
+    }
+
+
+    public static boolean estDeplacementValide(Position depart, Position arrivee,
+                                               Element[][] grille, Animal animal,
+                                               Mouton mouton, Loup loup) {
+        if (depart == null || arrivee == null || grille == null) {
+            return false;
+        }
+
+        int largeur = grille.length;
+        int hauteur = grille[0].length;
+
+        // Vérifier que la destination est dans les limites
+        if (arrivee.getX() < 0 || arrivee.getX() >= largeur ||
+                arrivee.getY() < 0 || arrivee.getY() >= hauteur) {
+            return false;
+        }
+
+        // Vérifier que la destination n'est pas un rocher
+        Element elementArrivee = grille[arrivee.getX()][arrivee.getY()];
+        if (elementArrivee instanceof Rocher) {
+            return false;
+        }
+
+        // Le loup ne peut pas aller sur la sortie sauf pour attraper le mouton
+        if (animal instanceof Loup && elementArrivee instanceof Sortie) {
+            return mouton != null && mouton.getX() == arrivee.getX() && mouton.getY() == arrivee.getY();
+        }
+
+        // Vérifier qu'il n'y a pas d'obstacles sur le chemin
+        return !aObstacleSurChemin(depart, arrivee, grille);
+    }
+
+
+    private static boolean aObstacleSurChemin(Position depart, Position arrivee, Element[][] grille) {
+        int x1 = depart.getX(), y1 = depart.getY();
+        int x2 = arrivee.getX(), y2 = arrivee.getY();
+
+        int dx = Math.abs(x2 - x1);
+        int dy = Math.abs(y2 - y1);
+        int stepX = x1 < x2 ? 1 : -1;
+        int stepY = y1 < y2 ? 1 : -1;
+
+        int err = dx - dy;
+        int x = x1, y = y1;
+
+        while (true) {
+            // Ne pas vérifier la case de départ et d'arrivée
+            if ((x != x1 || y != y1) && (x != x2 || y != y2)) {
+                if (grille[x][y] instanceof Rocher) {
+                    return true;
+                }
+            }
+
+            if (x == x2 && y == y2) break;
+
+            int e2 = 2 * err;
+            if (e2 > -dy) {
+                err -= dy;
+                x += stepX;
+            }
+            if (e2 < dx) {
+                err += dx;
+                y += stepY;
+            }
+        }
+
+        return false;
     }
 }

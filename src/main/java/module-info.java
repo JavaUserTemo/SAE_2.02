@@ -1,4 +1,4 @@
-module com.example.demov3 {
+module com.sae.moutonloup {
     requires javafx.controls;
     requires javafx.fxml;
 
@@ -6,4 +6,5 @@ module com.example.demov3 {
 
     exports com.sae.moutonloup;
     exports com.sae.moutonloup.model;
+    exports com.sae.moutonloup.ia;
 }

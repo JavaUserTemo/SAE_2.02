@@ -5,8 +5,7 @@
 <?import javafx.scene.layout.*?>
 <?import javafx.scene.text.*?>
 <?import javafx.geometry.Insets?>
-<?import javafx.scene.effect.DropShadow?>
-<?import javafx.scene.layout.StackPane?> <!-- ⬅️ NÉCESSAIRE -->
+
 
 <BorderPane xmlns="http://javafx.com/javafx"
             xmlns:fx="http://javafx.com/fxml"
@@ -97,11 +96,11 @@
 
             <Text text="Actions" fill="BLACK" style="-fx-font-weight: bold;"/>
 
-            <Button onAction="#boutonSupprimer" text="❌ Supprimer" styleClass="game-button"/>
-            <Button onAction="#demarrerPartie" text="▶ Démarrer" styleClass="game-button"/>
-            <Button onAction="#importerGrille" text="📂 Importer" styleClass="game-button"/>
-            <Button onAction="#exporterGrille" text="💾 Exporter" styleClass="game-button"/>
-            <Button onAction="#rejouer" text="🔁 Rejouer" styleClass="game-button"/>
+            <Button onAction="#boutonSupprimer" text="Supprimer" styleClass="game-button"/>
+            <Button onAction="#demarrerPartie" text="Démarrer" styleClass="game-button"/>
+            <Button onAction="#importerGrille" text="Importer" styleClass="game-button"/>
+            <Button onAction="#exporterGrille" text="Exporter" styleClass="game-button"/>
+            <Button onAction="#rejouer" text="Rejouer" styleClass="game-button"/>
 
         </VBox>
     </right>

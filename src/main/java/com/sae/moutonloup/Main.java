@@ -9,7 +9,7 @@ import javafx.stage.Stage;
 public class Main extends Application {
     @Override
     public void start(Stage primaryStage) throws Exception {
-        FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/sae/moutonloup/Demarrage.fxml"));
+        FXMLLoader loader = new FXMLLoader(getClass().getResource("Demarrage.fxml"));
         Parent root = loader.load();
 
         primaryStage.setTitle("Mange-moi si tu peux !");

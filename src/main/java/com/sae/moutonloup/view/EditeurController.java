@@ -1,6 +1,7 @@
 package com.sae.moutonloup.view;
 
 import com.sae.moutonloup.model.*;
+import com.sae.moutonloup.ia.AlgorithmeParcours;
 import javafx.fxml.FXML;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
@@ -13,7 +14,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.HashMap;
 import java.util.Map;
-import com.sae.moutonloup.ia.AlgorithmeParcours;
 
 public class EditeurController {
     private static final Map<String, Image> IMAGE_CACHE = new HashMap<>();
@@ -35,6 +35,12 @@ public class EditeurController {
     // États des animaux
     private boolean loupEnChasse = false;
     private boolean moutonEnFuite = false;
+
+    // Chemins calculés par les algorithmes
+    private List<Position> cheminMouton = new ArrayList<>();
+    private List<Position> cheminLoup = new ArrayList<>();
+    private int indexCheminMouton = 0;
+    private int indexCheminLoup = 0;
 
     @FXML
     private GridPane grillePane;
@@ -168,6 +174,10 @@ public class EditeurController {
         nbTours = nbHerbe = nbCactus = nbMarguerite = 0;
         loupEnChasse = false;
         moutonEnFuite = false;
+        cheminMouton.clear();
+        cheminLoup.clear();
+        indexCheminMouton = 0;
+        indexCheminLoup = 0;
         genererGrilleParDefaut();
         afficherGrille();
     }
@@ -315,18 +325,97 @@ public class EditeurController {
     private void demarrerPartie() {
         if (!verifierPreconditions()) return;
 
+        // Afficher la boîte de dialogue de choix d'algorithmes
+        if (!choisirAlgorithmes()) return;
+
         partieEnCours = true;
         nbTours = 0;
         nbHerbe = nbCactus = nbMarguerite = 0;
         loupEnChasse = false;
         moutonEnFuite = false;
+        cheminMouton.clear();
+        cheminLoup.clear();
+        indexCheminMouton = 0;
+        indexCheminLoup = 0;
 
-        System.out.println("=== DÉMARRAGE DE LA PARTIE ===");
-        System.out.println("Mouton: " + mouton.getPosition());
-        System.out.println("Loup: " + loup.getPosition());
+        System.out.println("=== DEMARRAGE DE LA PARTIE ===");
+        System.out.println("Mouton: " + mouton.getPosition() + " (Algorithme: " + algorithmeRouton + ")");
+        System.out.println("Loup: " + loup.getPosition() + " (Algorithme: " + algorithmeLoup + ")");
         System.out.println("Sortie: " + sortie.getX() + "," + sortie.getY());
 
         new Thread(this::jouerAuto).start();
+    }
+
+    private boolean choisirAlgorithmes() {
+        // Créer la boîte de dialogue personnalisée
+        Alert dialog = new Alert(Alert.AlertType.CONFIRMATION);
+        dialog.setTitle("Choix des algorithmes");
+        dialog.setHeaderText("Selectionnez les algorithmes pour chaque animal");
+
+        // Créer le contenu personnalisé
+        javafx.scene.layout.VBox content = new javafx.scene.layout.VBox(10);
+        content.setPadding(new javafx.geometry.Insets(10));
+
+        // Section Mouton
+        javafx.scene.control.Label labelMouton = new javafx.scene.control.Label("Algorithme pour le MOUTON:");
+        labelMouton.setStyle("-fx-font-weight: bold;");
+
+        javafx.scene.control.ComboBox<AlgorithmeType> comboMouton = new javafx.scene.control.ComboBox<>();
+        comboMouton.getItems().addAll(AlgorithmeType.values());
+        comboMouton.setValue(algorithmeRouton);
+
+        // Section Loup
+        javafx.scene.control.Label labelLoup = new javafx.scene.control.Label("Algorithme pour le LOUP:");
+        labelLoup.setStyle("-fx-font-weight: bold;");
+
+        javafx.scene.control.ComboBox<AlgorithmeType> comboLoup = new javafx.scene.control.ComboBox<>();
+        comboLoup.getItems().addAll(AlgorithmeType.values());
+        comboLoup.setValue(algorithmeLoup);
+
+        // Description des algorithmes
+        javafx.scene.control.TextArea description = new javafx.scene.control.TextArea();
+        description.setEditable(false);
+        description.setPrefRowCount(6);
+        description.setText(
+                "A_STAR: Rapide avec heuristique, optimal\n" +
+                        "DIJKSTRA: Optimal, explore tous les chemins\n" +
+                        "BFS: Plus court chemin, largeur d'abord\n" +
+                        "DFS: Exploration profonde, peut être long"
+        );
+
+        content.getChildren().addAll(
+                labelMouton, comboMouton,
+                new javafx.scene.control.Separator(),
+                labelLoup, comboLoup,
+                new javafx.scene.control.Separator(),
+                new javafx.scene.control.Label("Description:"),
+                description
+        );
+
+        dialog.getDialogPane().setContent(content);
+
+        // Boutons personnalisés
+        javafx.scene.control.ButtonType boutonDemarrer = new javafx.scene.control.ButtonType("Demarrer");
+        javafx.scene.control.ButtonType boutonAnnuler = new javafx.scene.control.ButtonType("Annuler",
+                javafx.scene.control.ButtonBar.ButtonData.CANCEL_CLOSE);
+        dialog.getButtonTypes().setAll(boutonDemarrer, boutonAnnuler);
+
+        // Afficher et traiter la réponse
+        java.util.Optional<javafx.scene.control.ButtonType> result = dialog.showAndWait();
+
+        if (result.isPresent() && result.get() == boutonDemarrer) {
+            // Récupérer les choix
+            algorithmeRouton = comboMouton.getValue();
+            algorithmeLoup = comboLoup.getValue();
+
+            System.out.println("Algorithmes choisis:");
+            System.out.println("- Mouton: " + algorithmeRouton);
+            System.out.println("- Loup: " + algorithmeLoup);
+
+            return true;
+        }
+
+        return false; // Annulé
     }
 
     private boolean verifierPreconditions() {
@@ -363,17 +452,9 @@ public class EditeurController {
         if (a == null || b == null) return false;
 
         int distance = a.distanceManhattan(b);
-        System.out.println("Distance entre " + a + " et " + b + ": " + distance);
+        if (distance > 5) return false;
 
-        if (distance > 5) {
-            System.out.println("Trop loin pour voir (distance > 5)");
-            return false;
-        }
-
-        boolean obstacle = aObstacleSurLigneDeVue(a, b);
-        System.out.println("Obstacle sur ligne de vue: " + obstacle);
-
-        return !obstacle;
+        return !aObstacleSurLigneDeVue(a, b);
     }
 
     private boolean aObstacleSurLigneDeVue(Position a, Position b) {
@@ -389,11 +470,10 @@ public class EditeurController {
         int x = x0, y = y0;
 
         while (true) {
-            // Ne pas vérifier les positions de départ et d'arrivée
             if ((x != x0 || y != y0) && (x != x1 || y != y1)) {
                 if (x >= 0 && x < largeur && y >= 0 && y < hauteur) {
                     if (grille[x][y] instanceof Rocher) {
-                        return true; // Obstacle trouvé
+                        return true;
                     }
                 }
             }
@@ -411,126 +491,7 @@ public class EditeurController {
             }
         }
 
-        return false; // Pas d'obstacle
-    }
-
-    private Position choisirDeplacementIntelligent(Animal animal, Position objectif) {
-        if (objectif == null) {
-            System.out.println("Objectif null, déplacement aléatoire");
-            return choisirDeplacementAleatoire(animal);
-        }
-
-        Position posActuelle = animal.getPosition();
-        int vitesse = animal.getVitesse();
-
-        System.out.println("Animal: " + animal.getClass().getSimpleName() +
-                " Position: " + posActuelle +
-                " Objectif: " + objectif +
-                " Vitesse: " + vitesse);
-
-        // Calculer la direction générale vers l'objectif
-        int deltaX = objectif.getX() - posActuelle.getX();
-        int deltaY = objectif.getY() - posActuelle.getY();
-
-        System.out.println("Delta vers objectif: deltaX=" + deltaX + ", deltaY=" + deltaY);
-
-        // Générer tous les déplacements possibles à la distance exacte de la vitesse
-        List<Position> candidats = new ArrayList<>();
-
-        for (int dx = -vitesse; dx <= vitesse; dx++) {
-            for (int dy = -vitesse; dy <= vitesse; dy++) {
-                if (Math.abs(dx) + Math.abs(dy) == vitesse) {
-                    int newX = posActuelle.getX() + dx;
-                    int newY = posActuelle.getY() + dy;
-                    Position candidat = new Position(newX, newY);
-
-                    // DEBUG : Afficher TOUS les candidats testés
-                    System.out.println("Test candidat: " + candidat + " - Valide: " + estPositionValideSimple(candidat, animal));
-
-                    if (estPositionValideSimple(candidat, animal)) {
-                        candidats.add(candidat);
-                        System.out.println("Candidat valide: " + candidat +
-                                " (distance vers objectif: " + candidat.distanceManhattan(objectif) + ")");
-                    }
-                }
-            }
-        }
-
-        if (candidats.isEmpty()) {
-            System.out.println("Aucun candidat valide trouvé !");
-            return null;
-        }
-
-        // Choisir le candidat le plus proche de l'objectif
-        Position meilleur = null;
-        int meilleureDistance = Integer.MAX_VALUE;
-
-        for (Position candidat : candidats) {
-            int distance = candidat.distanceManhattan(objectif);
-            if (distance < meilleureDistance) {
-                meilleureDistance = distance;
-                meilleur = candidat;
-            }
-        }
-
-        System.out.println("Meilleur choix: " + meilleur + " (distance vers objectif: " + meilleureDistance + ")");
-        return meilleur;
-    }
-
-    // MÉTHODE SIMPLIFIÉE POUR VÉRIFIER SI UNE POSITION EST VALIDE
-    private boolean estPositionValideSimple(Position pos, Animal animal) {
-        // Vérifier les limites
-        if (pos.getX() < 0 || pos.getX() >= largeur || pos.getY() < 0 || pos.getY() >= hauteur) {
-            return false;
-        }
-
-        // Vérifier que ce n'est pas un rocher
-        Element element = grille[pos.getX()][pos.getY()];
-        if (element instanceof Rocher) {
-            return false;
-        }
-
-        // Le loup ne peut pas aller sur la sortie (sauf si le mouton y est)
-        if (animal instanceof Loup && element instanceof Sortie) {
-            if (mouton != null) {
-                return mouton.getX() == pos.getX() && mouton.getY() == pos.getY();
-            }
-            return false;
-        }
-
-        return true;
-    }
-
-    private Position choisirDeplacementAleatoire(Animal animal) {
-        List<Position> positionsValides = new ArrayList<>();
-        Position posActuelle = animal.getPosition();
-        int vitesse = animal.getVitesse();
-
-        // Chercher toutes les positions valides à la distance exacte de la vitesse
-        for (int dx = -vitesse; dx <= vitesse; dx++) {
-            for (int dy = -vitesse; dy <= vitesse; dy++) {
-                if (Math.abs(dx) + Math.abs(dy) == vitesse) {
-                    int newX = posActuelle.getX() + dx;
-                    int newY = posActuelle.getY() + dy;
-                    Position candidat = new Position(newX, newY);
-
-                    if (estPositionValideSimple(candidat, animal)) {
-                        positionsValides.add(candidat);
-                    }
-                }
-            }
-        }
-
-        if (positionsValides.isEmpty()) {
-            System.out.println("Aucune position aléatoire valide pour " + animal.getClass().getSimpleName());
-            return null; // Aucune position valide trouvée
-        }
-
-        // Choisir aléatoirement parmi les positions valides
-        int index = new java.util.Random().nextInt(positionsValides.size());
-        Position choix = positionsValides.get(index);
-        System.out.println("Déplacement aléatoire vers: " + choix);
-        return choix;
+        return false;
     }
 
     private void jouerAuto() {
@@ -541,50 +502,64 @@ public class EditeurController {
             }
 
             System.out.println("\n=== TOUR " + (nbTours + 1) + " ===");
-            System.out.println("Mouton: " + mouton.getPosition() + " (vitesse: " + mouton.getVitesse() + ")");
-            System.out.println("Loup: " + loup.getPosition() + " (vitesse: " + loup.getVitesse() + ")");
-            System.out.println("Sortie: " + sortie.getX() + "," + sortie.getY());
 
             // Mise à jour des états de vision
             boolean loupVoitMouton = peutVoir(loup.getPosition(), mouton.getPosition());
             boolean moutonVoitLoup = peutVoir(mouton.getPosition(), loup.getPosition());
 
-            System.out.println("Loup voit mouton: " + loupVoitMouton);
-            System.out.println("Mouton voit loup: " + moutonVoitLoup);
-
             // Mise à jour des modes
+            boolean ancienModeLoup = loupEnChasse;
+            boolean ancienModeMouton = moutonEnFuite;
+
             loupEnChasse = loupVoitMouton;
             moutonEnFuite = moutonVoitLoup;
 
             System.out.println("Mode loup: " + (loupEnChasse ? "CHASSE" : "EXPLORATION"));
             System.out.println("Mode mouton: " + (moutonEnFuite ? "FUITE" : "PÂTURAGE"));
 
+            // Si le mode change, recalculer le chemin
+            if (ancienModeMouton != moutonEnFuite) {
+                cheminMouton.clear();
+                indexCheminMouton = 0;
+            }
+            if (ancienModeLoup != loupEnChasse) {
+                cheminLoup.clear();
+                indexCheminLoup = 0;
+            }
+
             // Tour du mouton
-            System.out.println("\n--- Tour du mouton ---");
-            if (!jouerTourMouton()) {
-                javafx.application.Platform.runLater(() -> finDePartie("Partie bloquée - Le mouton ne peut plus bouger"));
-                break;
-            }
+            boolean moutonPeutBouger = jouerTourMouton();
 
-            // Vérifications après le mouvement du mouton
-            if (mouton.getX() == sortie.getX() && mouton.getY() == sortie.getY()) {
-                javafx.application.Platform.runLater(() -> finDePartie("Le mouton a gagné ! Il a atteint la sortie."));
-                break;
-            }
-
+            // Vérification immédiate après le mouvement du mouton
             if (mouton.getX() == loup.getX() && mouton.getY() == loup.getY()) {
                 javafx.application.Platform.runLater(() -> finDePartie("Le loup a gagné ! Il a attrapé le mouton."));
                 break;
             }
 
+            // Si le mouton ne peut plus bouger (probablement attrapé), vérifier pourquoi
+            if (!moutonPeutBouger) {
+                if (mouton.getX() == loup.getX() && mouton.getY() == loup.getY()) {
+                    javafx.application.Platform.runLater(() -> finDePartie("Le loup a gagné ! Il a attrapé le mouton."));
+                    break;
+                } else {
+                    javafx.application.Platform.runLater(() -> finDePartie("Partie bloquée - Le mouton ne peut plus bouger"));
+                    break;
+                }
+            }
+
+            // Vérification si le mouton a atteint la sortie
+            if (mouton.getX() == sortie.getX() && mouton.getY() == sortie.getY()) {
+                javafx.application.Platform.runLater(() -> finDePartie("Le mouton a gagné ! Il a atteint la sortie."));
+                break;
+            }
+
             // Tour du loup
-            System.out.println("\n--- Tour du loup ---");
             if (!jouerTourLoup()) {
                 javafx.application.Platform.runLater(() -> finDePartie("Partie bloquée - Le loup ne peut plus bouger"));
                 break;
             }
 
-            // Vérification finale
+            // Vérification finale après le mouvement du loup
             if (mouton.getX() == loup.getX() && mouton.getY() == loup.getY()) {
                 javafx.application.Platform.runLater(() -> finDePartie("Le loup a gagné ! Il a attrapé le mouton."));
                 break;
@@ -594,7 +569,7 @@ public class EditeurController {
             javafx.application.Platform.runLater(this::afficherGrille);
 
             try {
-                Thread.sleep(1500); // Ralentir un peu pour mieux voir
+                Thread.sleep(1000);
             } catch (InterruptedException e) {
                 break;
             }
@@ -602,66 +577,388 @@ public class EditeurController {
     }
 
     private boolean jouerTourMouton() {
-        Position nouvellePosition;
+        // Si on n'a pas de chemin ou que le chemin est terminé, en calculer un nouveau
+        if (cheminMouton.isEmpty() || indexCheminMouton >= cheminMouton.size()) {
+            calculerNouveauCheminMouton();
+        }
+
+        return executerDeplacementMouton();
+    }
+
+    private void calculerNouveauCheminMouton() {
+        cheminMouton.clear();
+        indexCheminMouton = 0;
 
         if (moutonEnFuite && sortie != null) {
-            System.out.println("Le mouton fuit vers la sortie !");
-            nouvellePosition = choisirDeplacementIntelligent(mouton, new Position(sortie.getX(), sortie.getY()));
+            // Utiliser Dijkstra pour la fuite (trouve le chemin le plus sûr)
+            System.out.println("Calcul du chemin de fuite du mouton vers la sortie (Dijkstra)");
+            cheminMouton = AlgorithmeParcours.dijkstra(
+                    mouton.getPosition(),
+                    new Position(sortie.getX(), sortie.getY()),
+                    grille,
+                    mouton,
+                    loup,
+                    mouton
+            );
         } else {
-            System.out.println("Le mouton se déplace aléatoirement pour paître");
-            nouvellePosition = choisirDeplacementAleatoire(mouton);
+            // Utiliser A* pour le pâturage (plus rapide pour les courtes distances)
+            System.out.println("Mouvement aleatoire du mouton pour paitre (A*)");
+            Position positionAleatoire = choisirPositionAleatoire(mouton);
+            if (positionAleatoire != null) {
+                cheminMouton = AlgorithmeParcours.aStar(
+                        mouton.getPosition(),
+                        positionAleatoire,
+                        grille,
+                        mouton,
+                        loup,
+                        mouton
+                );
+            }
         }
 
-        if (nouvellePosition != null) {
-            System.out.println("Mouton se déplace vers: " + nouvellePosition);
-            return deplacerMouton(nouvellePosition);
-        } else {
-            System.out.println("Aucune position valide trouvée pour le mouton !");
-            return false;
-        }
+        System.out.println("Chemin calcule pour le mouton: " + cheminMouton.size() + " etapes");
     }
 
     private boolean jouerTourLoup() {
-        Position nouvellePosition;
-
+        // Simple : recalculer le chemin à chaque tour en mode chasse pour suivre le mouton
         if (loupEnChasse) {
-            System.out.println("Le loup chasse le mouton !");
-            nouvellePosition = choisirDeplacementIntelligent(loup, mouton.getPosition());
-        } else {
-            System.out.println("Le loup se déplace aléatoirement");
-            nouvellePosition = choisirDeplacementAleatoire(loup);
+            cheminLoup.clear();
+            indexCheminLoup = 0;
+            calculerNouveauCheminLoup();
         }
 
-        if (nouvellePosition != null) {
-            System.out.println("Loup se déplace vers: " + nouvellePosition);
-            return deplacerLoup(nouvellePosition);
-        } else {
-            System.out.println("Aucune position valide trouvée pour le loup !");
-            return false;
+        // Si pas de chemin, en calculer un
+        if (cheminLoup.isEmpty() || indexCheminLoup >= cheminLoup.size()) {
+            calculerNouveauCheminLoup();
         }
+
+        return executerDeplacementLoup();
     }
 
-    private boolean deplacerMouton(Position nouvellePosition) {
-        if (nouvellePosition == null) return false;
 
-        Position positionActuelle = mouton.getPosition();
-        int distance = positionActuelle.distanceManhattan(nouvellePosition);
+    private boolean attaqueDirectePuissante() {
+        if (mouton == null) return false;
 
-        // Vérifier que la distance correspond à la vitesse
-        if (distance != mouton.getVitesse()) {
-            System.out.println("Distance incorrecte pour le mouton: " + distance + " != " + mouton.getVitesse());
+        Position posLoup = loup.getPosition();
+        Position posMouton = mouton.getPosition();
+        int vitesse = loup.getVitesse();
+
+        System.out.println("Calcul attaque directe de " + posLoup + " vers " + posMouton);
+
+        // Calculer le chemin direct le plus court
+        List<Position> cheminDirect = AlgorithmeParcours.parcoursenLargeur(
+                posLoup, posMouton, grille, mouton, loup, loup
+        );
+
+        if (!cheminDirect.isEmpty()) {
+            System.out.println("Chemin direct trouvé: " + cheminDirect.size() + " étapes");
+
+            // Suivre le chemin direct autant que possible
+            for (int i = 0; i < Math.min(vitesse, cheminDirect.size()); i++) {
+                Position prochaine = cheminDirect.get(i);
+
+                if (estDeplacementValide(loup.getPosition(), prochaine, loup)) {
+                    loup.setPosition(prochaine);
+                    System.out.println("Loup attaque directe vers: " + prochaine + " (" + (i+1) + "/" + vitesse + ")");
+
+                    // Vérifier capture immédiate
+                    if (prochaine.getX() == posMouton.getX() && prochaine.getY() == posMouton.getY()) {
+                        System.out.println("CAPTURE RÉUSSIE !");
+                        return true;
+                    }
+                } else {
+                    System.out.println("Déplacement direct bloqué, abandon de l'attaque directe");
+                    break;
+                }
+            }
+        } else {
+            System.out.println("Aucun chemin direct trouvé, attaque normale");
+            return attaqueDirecte();
+        }
+
+        return true;
+    }
+
+
+    private boolean attaqueDirecte() {
+        if (mouton == null) return false;
+
+        Position posLoup = loup.getPosition();
+        Position posMouton = mouton.getPosition();
+        int vitesse = loup.getVitesse();
+
+        // Essayer de se déplacer directement vers le mouton
+        for (int step = 1; step <= vitesse; step++) {
+            // Calculer la direction vers le mouton
+            int deltaX = posMouton.getX() - posLoup.getX();
+            int deltaY = posMouton.getY() - posLoup.getY();
+
+            // Normaliser pour un seul pas
+            int dirX = Integer.compare(deltaX, 0);
+            int dirY = Integer.compare(deltaY, 0);
+
+            // Calculer la prochaine position
+            int newX = posLoup.getX() + dirX;
+            int newY = posLoup.getY() + dirY;
+            Position nouvellePos = new Position(newX, newY);
+
+            // Vérifier si le déplacement est valide
+            if (estDeplacementValide(posLoup, nouvellePos, loup)) {
+                loup.setPosition(nouvellePos);
+                posLoup = nouvellePos; // Mettre à jour pour le prochain pas
+
+                System.out.println("Loup attaque directement vers: " + nouvellePos +
+                        " (pas " + step + "/" + vitesse + ")");
+
+                // Vérifier si le loup a attrapé le mouton
+                if (nouvellePos.getX() == posMouton.getX() && nouvellePos.getY() == posMouton.getY()) {
+                    System.out.println("CAPTURE ! Le loup attrape le mouton !");
+                    return true;
+                }
+
+                // Si on a atteint le mouton ou qu'on est adjacent, arrêter
+                if (nouvellePos.distanceManhattan(posMouton) <= 1) {
+                    break;
+                }
+            } else {
+                // Si le déplacement direct n'est pas possible, essayer les côtés
+                Position[] alternatives = {
+                        new Position(posLoup.getX() + 1, posLoup.getY()),
+                        new Position(posLoup.getX() - 1, posLoup.getY()),
+                        new Position(posLoup.getX(), posLoup.getY() + 1),
+                        new Position(posLoup.getX(), posLoup.getY() - 1)
+                };
+
+                Position meilleure = null;
+                int meilleureDistance = Integer.MAX_VALUE;
+
+                for (Position alt : alternatives) {
+                    if (estDeplacementValide(posLoup, alt, loup)) {
+                        int dist = alt.distanceManhattan(posMouton);
+                        if (dist < meilleureDistance) {
+                            meilleureDistance = dist;
+                            meilleure = alt;
+                        }
+                    }
+                }
+
+                if (meilleure != null) {
+                    loup.setPosition(meilleure);
+                    posLoup = meilleure;
+
+                    System.out.println("Loup contourne vers: " + meilleure +
+                            " (pas " + step + "/" + vitesse + ")");
+
+                    // Vérifier capture
+                    if (meilleure.getX() == posMouton.getX() && meilleure.getY() == posMouton.getY()) {
+                        System.out.println("CAPTURE par contournement !");
+                        return true;
+                    }
+                } else {
+                    break; // Aucun mouvement possible
+                }
+            }
+        }
+
+        return true;
+    }
+
+    private void calculerNouveauCheminLoup() {
+        cheminLoup.clear();
+        indexCheminLoup = 0;
+
+        if (loupEnChasse && mouton != null) {
+            // Utiliser A* pour la chasse (plus rapide avec heuristique)
+            System.out.println("Loup chasse -> vers mouton " + mouton.getPosition() + " (A*)");
+            cheminLoup = AlgorithmeParcours.aStar(
+                    loup.getPosition(),
+                    mouton.getPosition(),
+                    grille,
+                    mouton,
+                    loup,
+                    loup
+            );
+        } else {
+            // Utiliser BFS pour l'exploration (parcours exhaustif)
+            System.out.println("Loup explore (BFS)");
+            Position positionAleatoire = choisirPositionAleatoire(loup);
+            if (positionAleatoire != null) {
+                cheminLoup = AlgorithmeParcours.parcoursenLargeur(
+                        loup.getPosition(),
+                        positionAleatoire,
+                        grille,
+                        mouton,
+                        loup,
+                        loup
+                );
+            }
+        }
+
+        System.out.println("Chemin loup: " + cheminLoup.size() + " etapes");
+    }
+
+
+    private Position predirePositionMouton() {
+        if (mouton == null || sortie == null) return null;
+
+        Position posMouton = mouton.getPosition();
+        Position posSortie = new Position(sortie.getX(), sortie.getY());
+
+        // Si le mouton fuit, il va vers la sortie
+        if (moutonEnFuite) {
+            // Calculer la direction générale vers la sortie
+            int deltaX = posSortie.getX() - posMouton.getX();
+            int deltaY = posSortie.getY() - posMouton.getY();
+
+            // Normaliser la direction (un pas à la fois)
+            int dirX = Integer.compare(deltaX, 0);
+            int dirY = Integer.compare(deltaY, 0);
+
+            // Prédire où sera le mouton dans 1-2 mouvements
+            int predictionSteps = Math.min(2, mouton.getVitesse());
+
+            for (int steps = predictionSteps; steps >= 1; steps--) {
+                int predX = posMouton.getX() + (dirX * steps);
+                int predY = posMouton.getY() + (dirY * steps);
+
+                // Vérifier que la position prédite est valide
+                if (predX >= 0 && predX < largeur && predY >= 0 && predY < hauteur) {
+                    Element element = grille[predX][predY];
+                    if (!(element instanceof Rocher)) {
+                        System.out.println("Position prédite du mouton: (" + predX + "," + predY + ")");
+                        return new Position(predX, predY);
+                    }
+                }
+            }
+        }
+
+        // Si pas de prédiction possible, retourner la position actuelle
+        return posMouton;
+    }
+
+    private Position choisirPositionAleatoire(Animal animal) {
+        List<Position> positionsValides = new ArrayList<>();
+
+        // Chercher des positions accessibles à une distance raisonnable
+        for (int dx = -5; dx <= 5; dx++) {
+            for (int dy = -5; dy <= 5; dy++) {
+                int newX = animal.getX() + dx;
+                int newY = animal.getY() + dy;
+
+                if (newX > 0 && newX < largeur - 1 && newY > 0 && newY < hauteur - 1) {
+                    Element element = grille[newX][newY];
+                    if (!(element instanceof Rocher)) {
+                        // Le loup ne peut pas aller sur la sortie
+                        if (animal instanceof Loup && element instanceof Sortie) {
+                            continue;
+                        }
+                        positionsValides.add(new Position(newX, newY));
+                    }
+                }
+            }
+        }
+
+        if (positionsValides.isEmpty()) {
+            return null;
+        }
+
+        int index = new java.util.Random().nextInt(positionsValides.size());
+        return positionsValides.get(index);
+    }
+
+    private boolean executerDeplacementMouton() {
+        int mouvementsRestants = mouton.getVitesse();
+        List<Position> mouvementsEffectues = new ArrayList<>();
+
+        while (mouvementsRestants > 0 && indexCheminMouton < cheminMouton.size()) {
+            Position prochaine = cheminMouton.get(indexCheminMouton);
+
+            if (estDeplacementValide(mouton.getPosition(), prochaine, mouton)) {
+                mouvementsEffectues.add(prochaine);
+                mouton.setPosition(prochaine);
+                indexCheminMouton++;
+                mouvementsRestants--;
+
+                System.out.println("Mouton se déplace vers: " + prochaine +
+                        " (mouvements restants: " + mouvementsRestants + ")");
+
+                // Vérifier après chaque déplacement si le mouton se fait attraper
+                if (loup != null && mouton.getX() == loup.getX() && mouton.getY() == loup.getY()) {
+                    System.out.println("Le mouton se fait attraper par le loup sur la case " + prochaine);
+                    return false; // ARRÊTER LE DÉPLACEMENT - le mouton est attrapé !
+                }
+            } else {
+                break; // Arrêter si le déplacement n'est plus valide
+            }
+        }
+
+        // Le mouton mange après son déplacement complet (seulement s'il n'a pas été attrapé)
+        if (!mouvementsEffectues.isEmpty()) {
+            Position positionFinale = mouvementsEffectues.get(mouvementsEffectues.size() - 1);
+            moutonMange(positionFinale.getX(), positionFinale.getY());
+            return true;
+        }
+
+        return false;
+    }
+
+    private boolean executerDeplacementLoup() {
+        int mouvementsRestants = loup.getVitesse();
+
+        while (mouvementsRestants > 0 && indexCheminLoup < cheminLoup.size()) {
+            Position prochaine = cheminLoup.get(indexCheminLoup);
+
+            if (estDeplacementValide(loup.getPosition(), prochaine, loup)) {
+                loup.setPosition(prochaine);
+                indexCheminLoup++;
+                mouvementsRestants--;
+
+                System.out.println("Loup se déplace vers: " + prochaine +
+                        " (mouvements restants: " + mouvementsRestants + ")");
+
+                // Vérifier après chaque déplacement si le loup attrape le mouton
+                if (mouton != null && loup.getX() == mouton.getX() && loup.getY() == mouton.getY()) {
+                    System.out.println("Le loup attrape le mouton sur la case " + prochaine);
+                    return true; // Arrêter le déplacement, le loup a gagné
+                }
+            } else {
+                break; // Arrêter si le déplacement n'est plus valide
+            }
+        }
+
+        return true;
+    }
+
+    private boolean estDeplacementValide(Position actuelle, Position destination, Animal animal) {
+        if (destination.getX() < 0 || destination.getX() >= largeur ||
+                destination.getY() < 0 || destination.getY() >= hauteur) {
             return false;
         }
 
-        // Déplacer le mouton
-        mouton.setPosition(nouvellePosition);
-        System.out.println("Mouton déplacé avec succès vers: " + nouvellePosition);
+        Element element = grille[destination.getX()][destination.getY()];
+        if (element instanceof Rocher) {
+            return false;
+        }
 
-        // Le mouton mange ce qui se trouve sur sa nouvelle position
-        Element elementCase = grille[nouvellePosition.getX()][nouvellePosition.getY()];
-        if (elementCase instanceof Vegetal vegetal) {
+        // Le loup ne peut pas aller sur la sortie sauf pour attraper le mouton
+        if (animal instanceof Loup && element instanceof Sortie) {
+            return mouton != null &&
+                    mouton.getX() == destination.getX() &&
+                    mouton.getY() == destination.getY();
+        }
+
+        // Vérifier que c'est un déplacement adjacent (distance de Manhattan = 1)
+        return actuelle.distanceManhattan(destination) == 1;
+    }
+
+    private void moutonMange(int x, int y) {
+        if (mouton == null) return;
+
+        Element element = grille[x][y];
+        if (element instanceof Vegetal vegetal) {
             mouton.manger(vegetal);
-            System.out.println("Mouton mange: " + vegetal.getClass().getSimpleName());
+            System.out.println("Mouton mange: " + vegetal.getClass().getSimpleName() +
+                    " (nouvelle vitesse: " + mouton.getVitesse() + ")");
 
             if (vegetal instanceof Herbe) {
                 nbHerbe++;
@@ -672,29 +969,8 @@ public class EditeurController {
             }
 
             // Faire repousser un nouveau végétal
-            grille[nouvellePosition.getX()][nouvellePosition.getY()] = genererVegetalAleatoire();
+            grille[x][y] = genererVegetalAleatoire();
         }
-
-        return true;
-    }
-
-    private boolean deplacerLoup(Position nouvellePosition) {
-        if (nouvellePosition == null) return false;
-
-        Position positionActuelle = loup.getPosition();
-        int distance = positionActuelle.distanceManhattan(nouvellePosition);
-
-        // Vérifier que la distance correspond à la vitesse
-        if (distance != loup.getVitesse()) {
-            System.out.println("Distance incorrecte pour le loup: " + distance + " != " + loup.getVitesse());
-            return false;
-        }
-
-        // Déplacer le loup
-        loup.setPosition(nouvellePosition);
-        System.out.println("Loup déplacé avec succès vers: " + nouvellePosition);
-
-        return true;
     }
 
     private Vegetal genererVegetalAleatoire() {
@@ -702,6 +978,28 @@ public class EditeurController {
         if (r < 6) return new Herbe();           // 60% herbe
         else if (r < 8) return new Marguerite(); // 20% marguerite
         else return new Cactus();                // 20% cactus
+    }
+
+    // Algorithmes sélectionnés
+    private AlgorithmeType algorithmeRouton = AlgorithmeType.DIJKSTRA;
+    private AlgorithmeType algorithmeLoup = AlgorithmeType.A_STAR;
+
+    private enum AlgorithmeType {
+        A_STAR("A* (Heuristique)"),
+        DIJKSTRA("Dijkstra (Optimal)"),
+        BFS("BFS (Largeur)"),
+        DFS("DFS (Profondeur)");
+
+        private final String nom;
+
+        AlgorithmeType(String nom) {
+            this.nom = nom;
+        }
+
+        @Override
+        public String toString() {
+            return nom;
+        }
     }
 
     private enum ElementType {
@@ -722,22 +1020,22 @@ public class EditeurController {
 
         String messageDetaille = String.format(
                 "%s\n\n" +
-                        "📊 Statistiques de la partie :\n" +
-                        "• Nombre de tours : %d\n" +
-                        "• Herbe mangée : %d\n" +
-                        "• Cactus mangés : %d\n" +
-                        "• Marguerites mangées : %d\n" +
-                        "• Mode loup : %s\n" +
-                        "• Mode mouton : %s\n\n" +
+                        "Statistiques de la partie :\n" +
+                        "- Nombre de tours : %d\n" +
+                        "- Herbe mangee : %d\n" +
+                        "- Cactus manges : %d\n" +
+                        "- Marguerites mangees : %d\n" +
+                        "- Mode loup : %s\n" +
+                        "- Mode mouton : %s\n\n" +
                         "Voulez-vous rejouer ?",
                 gagnant, nbTours, nbHerbe, nbCactus, nbMarguerite,
                 loupEnChasse ? "Chasse" : "Exploration",
-                moutonEnFuite ? "Fuite" : "Pâturage"
+                moutonEnFuite ? "Fuite" : "Paturage"
         );
 
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
         alert.setTitle("Fin de partie");
-        alert.setHeaderText("🎯 " + gagnant);
+        alert.setHeaderText(gagnant);
         alert.setContentText(messageDetaille);
 
         ButtonType boutonRejouer = new ButtonType("Rejouer");

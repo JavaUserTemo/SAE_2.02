@@ -5,9 +5,8 @@ import java.util.*;
 
 public class AlgorithmeParcours {
 
-
     public static List<Position> aStar(Position depart, Position objectif, Element[][] grille,
-                                       Mouton mouton, Loup loup) {
+                                       Mouton mouton, Loup loup, Animal animal) {
         if (depart == null || objectif == null || grille == null) {
             return new ArrayList<>();
         }
@@ -37,7 +36,7 @@ public class AlgorithmeParcours {
 
             closedSet.add(courant);
 
-            for (Position voisin : getVoisinsValides(courant, grille, largeur, hauteur, mouton, loup)) {
+            for (Position voisin : getVoisinsValides(courant, grille, largeur, hauteur, mouton, loup, animal)) {
                 if (closedSet.contains(voisin)) {
                     continue;
                 }
@@ -59,9 +58,8 @@ public class AlgorithmeParcours {
         return new ArrayList<>();
     }
 
-
     public static List<Position> dijkstra(Position depart, Position objectif, Element[][] grille,
-                                          Mouton mouton, Loup loup) {
+                                          Mouton mouton, Loup loup, Animal animal) {
         if (depart == null || objectif == null || grille == null) {
             return new ArrayList<>();
         }
@@ -87,7 +85,7 @@ public class AlgorithmeParcours {
 
             int distanceCourante = distances.get(courant);
 
-            for (Position voisin : getVoisinsValides(courant, grille, largeur, hauteur, mouton, loup)) {
+            for (Position voisin : getVoisinsValides(courant, grille, largeur, hauteur, mouton, loup, animal)) {
                 int nouvelleDist = distanceCourante + 1;
 
                 if (nouvelleDist < distances.getOrDefault(voisin, Integer.MAX_VALUE)) {
@@ -102,9 +100,9 @@ public class AlgorithmeParcours {
         return new ArrayList<>();
     }
 
-
     private static List<Position> getVoisinsValides(Position pos, Element[][] grille,
-                                                    int largeur, int hauteur, Mouton mouton, Loup loup) {
+                                                    int largeur, int hauteur,
+                                                    Mouton mouton, Loup loup, Animal animal) {
         List<Position> voisins = new ArrayList<>();
         int[][] directions = {{0, 1}, {0, -1}, {1, 0}, {-1, 0}};
 
@@ -120,14 +118,11 @@ public class AlgorithmeParcours {
                     continue;
                 }
 
-                // Le loup ne peut pas aller sur la sortie (sauf si le mouton y est)
-                if (element instanceof Sortie) {
-                    if (mouton != null && mouton.getX() == newX && mouton.getY() == newY) {
-                        // Le loup peut attraper le mouton sur la sortie
-                        voisins.add(new Position(newX, newY));
+                // Le loup ne peut pas aller sur la sortie SAUF pour attraper le mouton
+                if (animal instanceof Loup && element instanceof Sortie) {
+                    if (mouton == null || mouton.getX() != newX || mouton.getY() != newY) {
+                        continue; // Le loup ne peut pas aller sur la sortie
                     }
-                    // Sinon, le loup ne peut pas aller sur la sortie
-                    continue;
                 }
 
                 voisins.add(new Position(newX, newY));
@@ -136,7 +131,6 @@ public class AlgorithmeParcours {
 
         return voisins;
     }
-
 
     private static List<Position> construireChemin(Map<Position, Position> precedent,
                                                    Position depart, Position objectif) {
@@ -150,7 +144,6 @@ public class AlgorithmeParcours {
 
         return chemin;
     }
-
 
     public static Position trouverMeilleurePosition(Animal animal, Position objectif,
                                                     Element[][] grille, Mouton mouton, Loup loup) {
@@ -184,7 +177,6 @@ public class AlgorithmeParcours {
         return meilleurePos;
     }
 
-
     public static boolean estDeplacementValide(Position depart, Position arrivee,
                                                Element[][] grille, Animal animal,
                                                Mouton mouton, Loup loup) {
@@ -216,37 +208,38 @@ public class AlgorithmeParcours {
         return !aObstacleSurChemin(depart, arrivee, grille);
     }
 
-
     private static boolean aObstacleSurChemin(Position depart, Position arrivee, Element[][] grille) {
-        int x1 = depart.getX(), y1 = depart.getY();
-        int x2 = arrivee.getX(), y2 = arrivee.getY();
+        int x0 = depart.getX(), y0 = depart.getY();
+        int x1 = arrivee.getX(), y1 = arrivee.getY();
 
-        int dx = Math.abs(x2 - x1);
-        int dy = Math.abs(y2 - y1);
-        int stepX = x1 < x2 ? 1 : -1;
-        int stepY = y1 < y2 ? 1 : -1;
-
+        int dx = Math.abs(x1 - x0);
+        int dy = Math.abs(y1 - y0);
+        int sx = x0 < x1 ? 1 : -1;
+        int sy = y0 < y1 ? 1 : -1;
         int err = dx - dy;
-        int x = x1, y = y1;
+
+        int x = x0, y = y0;
 
         while (true) {
-            // Ne pas vérifier la case de départ et d'arrivée
-            if ((x != x1 || y != y1) && (x != x2 || y != y2)) {
-                if (grille[x][y] instanceof Rocher) {
-                    return true;
+            // Ne pas vérifier les cases de départ et d'arrivée
+            if ((x != x0 || y != y0) && (x != x1 || y != y1)) {
+                if (x >= 0 && x < grille.length && y >= 0 && y < grille[0].length) {
+                    if (grille[x][y] instanceof Rocher) {
+                        return true;
+                    }
                 }
             }
 
-            if (x == x2 && y == y2) break;
+            if (x == x1 && y == y1) break;
 
             int e2 = 2 * err;
             if (e2 > -dy) {
                 err -= dy;
-                x += stepX;
+                x += sx;
             }
             if (e2 < dx) {
                 err += dx;
-                y += stepY;
+                y += sy;
             }
         }
 

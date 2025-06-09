@@ -21,7 +21,6 @@ public class EditeurController {
     private int nbTours = 0;
     private int nbHerbe = 0, nbCactus = 0, nbMarguerite = 0;
 
-    private boolean estTourDuMouton = true;
     private Mouton mouton;
     private Loup loup;
 
@@ -167,7 +166,6 @@ public class EditeurController {
         loup = null;
         sortie = null;
         nbTours = nbHerbe = nbCactus = nbMarguerite = 0;
-        estTourDuMouton = true;
         loupEnChasse = false;
         moutonEnFuite = false;
         genererGrilleParDefaut();
@@ -256,6 +254,7 @@ public class EditeurController {
                 if (bordure && grille[x][y] instanceof Rocher) {
                     sortie = new Sortie(x, y);
                     grille[x][y] = sortie;
+                    System.out.println("Sortie placée en: " + x + "," + y);
                 }
             }
             case SUPPRIMER -> {
@@ -317,11 +316,15 @@ public class EditeurController {
         if (!verifierPreconditions()) return;
 
         partieEnCours = true;
-        estTourDuMouton = true;
         nbTours = 0;
         nbHerbe = nbCactus = nbMarguerite = 0;
         loupEnChasse = false;
         moutonEnFuite = false;
+
+        System.out.println("=== DÉMARRAGE DE LA PARTIE ===");
+        System.out.println("Mouton: " + mouton.getPosition());
+        System.out.println("Loup: " + loup.getPosition());
+        System.out.println("Sortie: " + sortie.getX() + "," + sortie.getY());
 
         new Thread(this::jouerAuto).start();
     }
@@ -356,33 +359,38 @@ public class EditeurController {
         });
     }
 
-
     private boolean peutVoir(Position a, Position b) {
         if (a == null || b == null) return false;
 
-        // Vérifier la distance de Manhattan
         int distance = a.distanceManhattan(b);
-        if (distance > 5) return false;
+        System.out.println("Distance entre " + a + " et " + b + ": " + distance);
 
-        // Vérifier s'il y a des obstacles sur la ligne de vue
-        return !aObstacleSurLigneDeVue(a, b);
+        if (distance > 5) {
+            System.out.println("Trop loin pour voir (distance > 5)");
+            return false;
+        }
+
+        boolean obstacle = aObstacleSurLigneDeVue(a, b);
+        System.out.println("Obstacle sur ligne de vue: " + obstacle);
+
+        return !obstacle;
     }
 
     private boolean aObstacleSurLigneDeVue(Position a, Position b) {
-        int x1 = a.getX(), y1 = a.getY();
-        int x2 = b.getX(), y2 = b.getY();
+        int x0 = a.getX(), y0 = a.getY();
+        int x1 = b.getX(), y1 = b.getY();
 
-        int dx = Math.abs(x2 - x1);
-        int dy = Math.abs(y2 - y1);
-        int stepX = x1 < x2 ? 1 : -1;
-        int stepY = y1 < y2 ? 1 : -1;
-
+        int dx = Math.abs(x1 - x0);
+        int dy = Math.abs(y1 - y0);
+        int sx = x0 < x1 ? 1 : -1;
+        int sy = y0 < y1 ? 1 : -1;
         int err = dx - dy;
-        int x = x1, y = y1;
+
+        int x = x0, y = y0;
 
         while (true) {
             // Ne pas vérifier les positions de départ et d'arrivée
-            if ((x != x1 || y != y1) && (x != x2 || y != y2)) {
+            if ((x != x0 || y != y0) && (x != x1 || y != y1)) {
                 if (x >= 0 && x < largeur && y >= 0 && y < hauteur) {
                     if (grille[x][y] instanceof Rocher) {
                         return true; // Obstacle trouvé
@@ -390,51 +398,108 @@ public class EditeurController {
                 }
             }
 
-            if (x == x2 && y == y2) break;
+            if (x == x1 && y == y1) break;
 
             int e2 = 2 * err;
             if (e2 > -dy) {
                 err -= dy;
-                x += stepX;
+                x += sx;
             }
             if (e2 < dx) {
                 err += dx;
-                y += stepY;
+                y += sy;
             }
         }
 
         return false; // Pas d'obstacle
     }
 
-
     private Position choisirDeplacementIntelligent(Animal animal, Position objectif) {
-        // Utiliser les algorithmes de parcours pour trouver le meilleur chemin
-        List<Position> chemin;
-
-        if (animal instanceof Mouton) {
-            chemin = AlgorithmeParcours.aStar(animal.getPosition(), objectif, grille, mouton, loup);
-        } else {
-            chemin = AlgorithmeParcours.dijkstra(animal.getPosition(), objectif, grille, mouton, loup);
+        if (objectif == null) {
+            System.out.println("Objectif null, déplacement aléatoire");
+            return choisirDeplacementAleatoire(animal);
         }
 
-        // Si on a un chemin, essayer de suivre la première étape
-        if (!chemin.isEmpty()) {
-            Position prochaine = chemin.get(0);
-            int distance = animal.getPosition().distanceManhattan(prochaine);
+        Position posActuelle = animal.getPosition();
+        int vitesse = animal.getVitesse();
 
-            // Si la prochaine position est à la bonne distance, l'utiliser
-            if (distance == animal.getVitesse()) {
-                if (AlgorithmeParcours.estDeplacementValide(animal.getPosition(), prochaine,
-                        grille, animal, mouton, loup)) {
-                    return prochaine;
+        System.out.println("Animal: " + animal.getClass().getSimpleName() +
+                " Position: " + posActuelle +
+                " Objectif: " + objectif +
+                " Vitesse: " + vitesse);
+
+        // Calculer la direction générale vers l'objectif
+        int deltaX = objectif.getX() - posActuelle.getX();
+        int deltaY = objectif.getY() - posActuelle.getY();
+
+        System.out.println("Delta vers objectif: deltaX=" + deltaX + ", deltaY=" + deltaY);
+
+        // Générer tous les déplacements possibles à la distance exacte de la vitesse
+        List<Position> candidats = new ArrayList<>();
+
+        for (int dx = -vitesse; dx <= vitesse; dx++) {
+            for (int dy = -vitesse; dy <= vitesse; dy++) {
+                if (Math.abs(dx) + Math.abs(dy) == vitesse) {
+                    int newX = posActuelle.getX() + dx;
+                    int newY = posActuelle.getY() + dy;
+                    Position candidat = new Position(newX, newY);
+
+                    // DEBUG : Afficher TOUS les candidats testés
+                    System.out.println("Test candidat: " + candidat + " - Valide: " + estPositionValideSimple(candidat, animal));
+
+                    if (estPositionValideSimple(candidat, animal)) {
+                        candidats.add(candidat);
+                        System.out.println("Candidat valide: " + candidat +
+                                " (distance vers objectif: " + candidat.distanceManhattan(objectif) + ")");
+                    }
                 }
             }
         }
 
-        // Sinon, utiliser la méthode de recherche directionnelle
-        return AlgorithmeParcours.trouverMeilleurePosition(animal, objectif, grille, mouton, loup);
+        if (candidats.isEmpty()) {
+            System.out.println("Aucun candidat valide trouvé !");
+            return null;
+        }
+
+        // Choisir le candidat le plus proche de l'objectif
+        Position meilleur = null;
+        int meilleureDistance = Integer.MAX_VALUE;
+
+        for (Position candidat : candidats) {
+            int distance = candidat.distanceManhattan(objectif);
+            if (distance < meilleureDistance) {
+                meilleureDistance = distance;
+                meilleur = candidat;
+            }
+        }
+
+        System.out.println("Meilleur choix: " + meilleur + " (distance vers objectif: " + meilleureDistance + ")");
+        return meilleur;
     }
 
+    // MÉTHODE SIMPLIFIÉE POUR VÉRIFIER SI UNE POSITION EST VALIDE
+    private boolean estPositionValideSimple(Position pos, Animal animal) {
+        // Vérifier les limites
+        if (pos.getX() < 0 || pos.getX() >= largeur || pos.getY() < 0 || pos.getY() >= hauteur) {
+            return false;
+        }
+
+        // Vérifier que ce n'est pas un rocher
+        Element element = grille[pos.getX()][pos.getY()];
+        if (element instanceof Rocher) {
+            return false;
+        }
+
+        // Le loup ne peut pas aller sur la sortie (sauf si le mouton y est)
+        if (animal instanceof Loup && element instanceof Sortie) {
+            if (mouton != null) {
+                return mouton.getX() == pos.getX() && mouton.getY() == pos.getY();
+            }
+            return false;
+        }
+
+        return true;
+    }
 
     private Position choisirDeplacementAleatoire(Animal animal) {
         List<Position> positionsValides = new ArrayList<>();
@@ -449,8 +514,7 @@ public class EditeurController {
                     int newY = posActuelle.getY() + dy;
                     Position candidat = new Position(newX, newY);
 
-                    if (AlgorithmeParcours.estDeplacementValide(posActuelle, candidat,
-                            grille, animal, mouton, loup)) {
+                    if (estPositionValideSimple(candidat, animal)) {
                         positionsValides.add(candidat);
                     }
                 }
@@ -458,119 +522,124 @@ public class EditeurController {
         }
 
         if (positionsValides.isEmpty()) {
+            System.out.println("Aucune position aléatoire valide pour " + animal.getClass().getSimpleName());
             return null; // Aucune position valide trouvée
         }
 
         // Choisir aléatoirement parmi les positions valides
         int index = new java.util.Random().nextInt(positionsValides.size());
-        return positionsValides.get(index);
+        Position choix = positionsValides.get(index);
+        System.out.println("Déplacement aléatoire vers: " + choix);
+        return choix;
     }
-
 
     private void jouerAuto() {
         while (partieEnCours) {
             if (mouton == null || loup == null || sortie == null) {
+                System.out.println("Éléments manquants - Arrêt de la simulation");
                 break;
             }
 
-            // Vérifier les conditions de fin
-            if (mouton.getX() == loup.getX() && mouton.getY() == loup.getY()) {
-                javafx.application.Platform.runLater(() -> finDePartie("Le loup a gagné ! Il a attrapé le mouton."));
-                break;
-            }
-
-            if (mouton.getX() == sortie.getX() && mouton.getY() == sortie.getY()) {
-                javafx.application.Platform.runLater(() -> finDePartie("Le mouton a gagné ! Il a atteint la sortie."));
-                break;
-            }
+            System.out.println("\n=== TOUR " + (nbTours + 1) + " ===");
+            System.out.println("Mouton: " + mouton.getPosition() + " (vitesse: " + mouton.getVitesse() + ")");
+            System.out.println("Loup: " + loup.getPosition() + " (vitesse: " + loup.getVitesse() + ")");
+            System.out.println("Sortie: " + sortie.getX() + "," + sortie.getY());
 
             // Mise à jour des états de vision
             boolean loupVoitMouton = peutVoir(loup.getPosition(), mouton.getPosition());
             boolean moutonVoitLoup = peutVoir(mouton.getPosition(), loup.getPosition());
 
+            System.out.println("Loup voit mouton: " + loupVoitMouton);
+            System.out.println("Mouton voit loup: " + moutonVoitLoup);
+
             // Mise à jour des modes
-            if (loupVoitMouton) {
-                loupEnChasse = true;
-            } else {
-                loupEnChasse = false;
-            }
+            loupEnChasse = loupVoitMouton;
+            moutonEnFuite = moutonVoitLoup;
 
-            if (moutonVoitLoup) {
-                moutonEnFuite = true;
-            } else {
-                moutonEnFuite = false;
-            }
+            System.out.println("Mode loup: " + (loupEnChasse ? "CHASSE" : "EXPLORATION"));
+            System.out.println("Mode mouton: " + (moutonEnFuite ? "FUITE" : "PÂTURAGE"));
 
-            boolean deplacementReussi = false;
-
-            if (estTourDuMouton) {
-                deplacementReussi = jouerTourMouton();
-                if (deplacementReussi) {
-                    estTourDuMouton = false; // Passer au tour du loup
-                }
-            } else {
-                deplacementReussi = jouerTourLoup();
-                if (deplacementReussi) {
-                    estTourDuMouton = true; // Passer au tour du mouton
-                    nbTours++; // Incrémenter le nombre de tours après chaque cycle complet
-                }
-            }
-
-            if (!deplacementReussi) {
-                javafx.application.Platform.runLater(() -> finDePartie("Partie bloquée - Aucun déplacement possible"));
+            // Tour du mouton
+            System.out.println("\n--- Tour du mouton ---");
+            if (!jouerTourMouton()) {
+                javafx.application.Platform.runLater(() -> finDePartie("Partie bloquée - Le mouton ne peut plus bouger"));
                 break;
             }
 
-            // Mettre à jour l'affichage tous les deux demi-tours
+            // Vérifications après le mouvement du mouton
+            if (mouton.getX() == sortie.getX() && mouton.getY() == sortie.getY()) {
+                javafx.application.Platform.runLater(() -> finDePartie("Le mouton a gagné ! Il a atteint la sortie."));
+                break;
+            }
+
+            if (mouton.getX() == loup.getX() && mouton.getY() == loup.getY()) {
+                javafx.application.Platform.runLater(() -> finDePartie("Le loup a gagné ! Il a attrapé le mouton."));
+                break;
+            }
+
+            // Tour du loup
+            System.out.println("\n--- Tour du loup ---");
+            if (!jouerTourLoup()) {
+                javafx.application.Platform.runLater(() -> finDePartie("Partie bloquée - Le loup ne peut plus bouger"));
+                break;
+            }
+
+            // Vérification finale
+            if (mouton.getX() == loup.getX() && mouton.getY() == loup.getY()) {
+                javafx.application.Platform.runLater(() -> finDePartie("Le loup a gagné ! Il a attrapé le mouton."));
+                break;
+            }
+
+            nbTours++;
             javafx.application.Platform.runLater(this::afficherGrille);
 
-            // Pause pour voir l'animation
             try {
-                Thread.sleep(1000);
+                Thread.sleep(1500); // Ralentir un peu pour mieux voir
             } catch (InterruptedException e) {
                 break;
             }
         }
     }
 
-
     private boolean jouerTourMouton() {
         Position nouvellePosition;
 
-        if (moutonEnFuite) {
-            // Le mouton fuit vers la sortie
+        if (moutonEnFuite && sortie != null) {
+            System.out.println("Le mouton fuit vers la sortie !");
             nouvellePosition = choisirDeplacementIntelligent(mouton, new Position(sortie.getX(), sortie.getY()));
         } else {
-            // Le mouton se déplace aléatoirement pour paître
+            System.out.println("Le mouton se déplace aléatoirement pour paître");
             nouvellePosition = choisirDeplacementAleatoire(mouton);
         }
 
         if (nouvellePosition != null) {
+            System.out.println("Mouton se déplace vers: " + nouvellePosition);
             return deplacerMouton(nouvellePosition);
+        } else {
+            System.out.println("Aucune position valide trouvée pour le mouton !");
+            return false;
         }
-
-        return false;
     }
-
 
     private boolean jouerTourLoup() {
         Position nouvellePosition;
 
         if (loupEnChasse) {
-            // Le loup chasse le mouton
+            System.out.println("Le loup chasse le mouton !");
             nouvellePosition = choisirDeplacementIntelligent(loup, mouton.getPosition());
         } else {
-            // Le loup se déplace aléatoirement
+            System.out.println("Le loup se déplace aléatoirement");
             nouvellePosition = choisirDeplacementAleatoire(loup);
         }
 
         if (nouvellePosition != null) {
+            System.out.println("Loup se déplace vers: " + nouvellePosition);
             return deplacerLoup(nouvellePosition);
+        } else {
+            System.out.println("Aucune position valide trouvée pour le loup !");
+            return false;
         }
-
-        return false;
     }
-
 
     private boolean deplacerMouton(Position nouvellePosition) {
         if (nouvellePosition == null) return false;
@@ -580,23 +649,19 @@ public class EditeurController {
 
         // Vérifier que la distance correspond à la vitesse
         if (distance != mouton.getVitesse()) {
-            return false;
-        }
-
-        // Vérifier que le déplacement est valide
-        if (!AlgorithmeParcours.estDeplacementValide(positionActuelle, nouvellePosition,
-                grille, mouton, mouton, loup)) {
+            System.out.println("Distance incorrecte pour le mouton: " + distance + " != " + mouton.getVitesse());
             return false;
         }
 
         // Déplacer le mouton
         mouton.setPosition(nouvellePosition);
+        System.out.println("Mouton déplacé avec succès vers: " + nouvellePosition);
 
         // Le mouton mange ce qui se trouve sur sa nouvelle position
         Element elementCase = grille[nouvellePosition.getX()][nouvellePosition.getY()];
         if (elementCase instanceof Vegetal vegetal) {
             mouton.manger(vegetal);
-
+            System.out.println("Mouton mange: " + vegetal.getClass().getSimpleName());
 
             if (vegetal instanceof Herbe) {
                 nbHerbe++;
@@ -606,13 +671,12 @@ public class EditeurController {
                 nbMarguerite++;
             }
 
-
+            // Faire repousser un nouveau végétal
             grille[nouvellePosition.getX()][nouvellePosition.getY()] = genererVegetalAleatoire();
         }
 
         return true;
     }
-
 
     private boolean deplacerLoup(Position nouvellePosition) {
         if (nouvellePosition == null) return false;
@@ -620,50 +684,51 @@ public class EditeurController {
         Position positionActuelle = loup.getPosition();
         int distance = positionActuelle.distanceManhattan(nouvellePosition);
 
-
+        // Vérifier que la distance correspond à la vitesse
         if (distance != loup.getVitesse()) {
+            System.out.println("Distance incorrecte pour le loup: " + distance + " != " + loup.getVitesse());
             return false;
         }
 
-
-        if (!AlgorithmeParcours.estDeplacementValide(positionActuelle, nouvellePosition,
-                grille, loup, mouton, loup)) {
-            return false;
-        }
-
-
+        // Déplacer le loup
         loup.setPosition(nouvellePosition);
+        System.out.println("Loup déplacé avec succès vers: " + nouvellePosition);
 
         return true;
     }
 
-
     private Vegetal genererVegetalAleatoire() {
-        int r = new java.util.Random().nextInt(3);
-        return switch (r) {
-            case 0 -> new Herbe();
-            case 1 -> new Marguerite();
-            default -> new Cactus();
-        };
+        int r = new java.util.Random().nextInt(10);
+        if (r < 6) return new Herbe();           // 60% herbe
+        else if (r < 8) return new Marguerite(); // 20% marguerite
+        else return new Cactus();                // 20% cactus
     }
-
 
     private enum ElementType {
         HERBE, CACTUS, MARGUERITE, ROCHER, MOUTON, LOUP, SUPPRIMER, SORTIE
     }
 
-
     private void finDePartie(String gagnant) {
         partieEnCours = false;
         javafx.application.Platform.runLater(this::afficherGrille);
 
+        System.out.println("=== FIN DE PARTIE ===");
+        System.out.println("Résultat: " + gagnant);
+        System.out.println("Nombre de tours: " + nbTours);
+        System.out.println("Statistiques du mouton:");
+        System.out.println("- Herbe mangée: " + nbHerbe);
+        System.out.println("- Cactus mangés: " + nbCactus);
+        System.out.println("- Marguerites mangées: " + nbMarguerite);
+
         String messageDetaille = String.format(
                 "%s\n\n" +
-                        " Statistiques de la partie :\n" +
+                        "📊 Statistiques de la partie :\n" +
                         "• Nombre de tours : %d\n" +
                         "• Herbe mangée : %d\n" +
                         "• Cactus mangés : %d\n" +
-                        "• Marguerites mangées : %d\n\n" +
+                        "• Marguerites mangées : %d\n" +
+                        "• Mode loup : %s\n" +
+                        "• Mode mouton : %s\n\n" +
                         "Voulez-vous rejouer ?",
                 gagnant, nbTours, nbHerbe, nbCactus, nbMarguerite,
                 loupEnChasse ? "Chasse" : "Exploration",
@@ -672,7 +737,7 @@ public class EditeurController {
 
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
         alert.setTitle("Fin de partie");
-        alert.setHeaderText(" " + gagnant);
+        alert.setHeaderText("🎯 " + gagnant);
         alert.setContentText(messageDetaille);
 
         ButtonType boutonRejouer = new ButtonType("Rejouer");

@@ -4,10 +4,9 @@ import javafx.scene.image.Image;
 
 public class Mouton extends Animal {
 
-    private int vitesse = 2;
-
     public Mouton(Position position) {
         super(position);
+        this.vitesse = 2; // Initialiser la vitesse héritée de Animal
     }
 
     public void manger(Vegetal vegetal) {
@@ -18,10 +17,6 @@ public class Mouton extends Animal {
         } else if (vegetal instanceof Marguerite) {
             this.vitesse = 4;
         }
-    }
-
-    public int getVitesse() {
-        return vitesse;
     }
 
     @Override

@@ -262,6 +262,12 @@ public class EditeurController {
             }
             case SORTIE -> {
                 if (bordure && grille[x][y] instanceof Rocher) {
+                    // Si une sortie existe déjà, la supprimer en la remettant en rocher
+                    if (sortie != null) {
+                        grille[sortie.getX()][sortie.getY()] = new Rocher();
+                    }
+
+                    // Créer la nouvelle sortie
                     sortie = new Sortie(x, y);
                     grille[x][y] = sortie;
                     System.out.println("Sortie placée en: " + x + "," + y);

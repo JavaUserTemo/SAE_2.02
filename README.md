@@ -6,7 +6,7 @@ Description:
 Un mouton se déplace pour paître et fuit à la sortie du labyrinthe s’il voit le loup
 Un loup explore le labyrinthe et chasse le mouton s’il le voit
 Différents végétaux impactent la vitesse du mouton, herbe, cactus, marguerite
-Plusieurs algorithmes de parcours (A*, Dijkstra)
+Plusieurs algorithmes de parcours (A*, Dijkstra,BFS,DFS)
 
 Installation et Exécution
 
